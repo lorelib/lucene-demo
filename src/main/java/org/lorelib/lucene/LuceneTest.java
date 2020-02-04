@@ -1,5 +1,6 @@
 package org.lorelib.lucene;
 
+import com.hankcs.lucene.HanLPAnalyzer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.cn.smart.SmartChineseAnalyzer;
 import org.apache.lucene.document.*;
@@ -54,7 +55,8 @@ public class LuceneTest {
 
         //2.创建分词器
         //StandardAnalyzer analyzer = new StandardAnalyzer();
-        Analyzer analyzer = new SmartChineseAnalyzer();
+        // Analyzer analyzer = new SmartChineseAnalyzer();
+        Analyzer analyzer = new HanLPAnalyzer();
 
         //3 创建索引写入器的配置对象
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
@@ -137,7 +139,7 @@ public class LuceneTest {
         TopDocs topDocs = searcher.search(query, 10);
 
         //7 各种操作
-        long totalHits = topDocs.totalHits;
+        long totalHits = topDocs.totalHits.value;
         ScoreDoc[] scoreDocs = topDocs.scoreDocs;
         System.out.println("总共找到条数：" + totalHits);
 
@@ -168,7 +170,7 @@ public class LuceneTest {
         TopDocs topDocs = searcher.search(query, 10);
 
         //7 各种操作
-        long totalHits = topDocs.totalHits;
+        long totalHits = topDocs.totalHits.value;
         ScoreDoc[] scoreDocs = topDocs.scoreDocs;
         System.out.println("总共找到条数：" + totalHits);
 
@@ -248,7 +250,7 @@ public class LuceneTest {
     }
 
     /**
-     * 短语查询
+     * 短语查询,使用SmartChineseAnalyzer查不出结果，这与分词器有关，使用HanLPAnalyzer则能查出结果
      */
     @Test
     public void testPhraseQuery() throws Exception {
@@ -280,9 +282,9 @@ public class LuceneTest {
         Sort sort = new Sort(SortField.FIELD_SCORE, new SortField("id", SortField.Type.LONG, false));
 
         // TopDocs search = searcher.search(query, 10, sort); // 加了sort后取不到评分
-        TopDocs search = searcher.search(query, 10, sort, true, true); // 设置doDocScores为true就能得到评分
+        TopDocs search = searcher.search(query, 10, sort, true); // 设置doDocScores为true就能得到评分
 
-        long totalHits = search.totalHits;
+        long totalHits = search.totalHits.value;
         System.out.println("total:" + totalHits);
 
         ScoreDoc[] scoreDocs = search.scoreDocs;
@@ -397,7 +399,7 @@ public class LuceneTest {
 
         //9 搜索
         TopDocs topDocs = searcher.search(query, 10);
-        System.err.println("本次搜索到：" + topDocs.totalHits + "条数据");
+        System.err.println("本次搜索到：" + topDocs.totalHits.value + "条数据");
 
         //10 获取结果
         ScoreDoc[] docs = topDocs.scoreDocs;
@@ -431,7 +433,7 @@ public class LuceneTest {
         Query query = parser.parse("搜索");
         Sort sort = new Sort(new SortField("id", SortField.Type.LONG, false));
         TopFieldDocs topDocs = searcher.search(query, end, sort);
-        System.out.println("本次总共搜索到了" + topDocs.totalHits);
+        System.out.println("本次总共搜索到了" + topDocs.totalHits.value);
 
         ScoreDoc[] scoreDocs = topDocs.scoreDocs;
         for (int i = start; i < end; i++) {
@@ -439,7 +441,7 @@ public class LuceneTest {
             int doc = scoreDoc.doc;
             Document document = reader.document(doc);
 
-            System.out.println("id\t" + document.get("id") + " title\t" + document.get("title"));
+            System.out.println("id: " + document.get("id") + " title\t" + document.get("title"));
         }
     }
 }
