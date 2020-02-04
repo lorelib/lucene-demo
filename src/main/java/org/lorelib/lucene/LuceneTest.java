@@ -1,7 +1,11 @@
 package org.lorelib.lucene;
 
+import com.hankcs.lucene.HanLPAnalyzer;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.cn.smart.SmartChineseAnalyzer;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
+import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
@@ -10,21 +14,22 @@ import org.apache.lucene.search.highlight.Highlighter;
 import org.apache.lucene.search.highlight.QueryScorer;
 import org.apache.lucene.search.highlight.Scorer;
 import org.apache.lucene.search.highlight.SimpleHTMLFormatter;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 import org.junit.Test;
-import org.wltea.analyzer.lucene.IKAnalyzer;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
+import java.nio.file.Paths;
 
 /**
  * lucene使用步骤:
- * 1 创建文档对象
- * 2 创建存储目录
- * 3 创建分词器
- * 4 创建索引写入器的配置对象
- * 5 创建索引写入器对象
+ * 1 创建存储目录
+ * 2 创建分词器
+ * 3 创建索引写入器的配置对象
+ * 4 创建索引写入器对象
+ * 5 创建文档对象
  * 6 将文档交给索引写入器
  * 7 提交
  * 8 关闭
@@ -32,50 +37,66 @@ import java.io.IOException;
 public class LuceneTest {
     private final static String INDEX_DIRECTORY = "/opt/search/indexDir";
 
+    private static class TextFileFilter implements FileFilter {
+        @Override
+        public boolean accept(File pathname) {
+            return pathname.getName().toLowerCase().endsWith(".txt");
+        }
+    }
+
     /**
      * 创建索引
      * @throws IOException
      */
     @Test
     public void testCreate() throws IOException {
-        //1.创建文档
+        //1.创建存储目录
+        // FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY).toPath());
+        Directory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
+
+        //2.创建分词器
+        //StandardAnalyzer analyzer = new StandardAnalyzer();
+        Analyzer analyzer = new HanLPAnalyzer();
+
+        //3 创建索引写入器的配置对象
+        IndexWriterConfig config = new IndexWriterConfig(analyzer);
+
+        //4 创建索引写入器对象
+        IndexWriter indexWriter = new IndexWriter(directory, config);
+
+        //5.创建文档
         Document document1 = new Document();
-        //创建字段, TextField既创建索引又会被分词, LongField、StringField等只会被索引
-        document1.add(new LongField("id", 1l, Field.Store.YES));
+        //创建字段, TextField既创建索引又会被分词, LongPoint、StringField等只会被索引
+        document1.add(new LongPoint("id", 1l));
+        document1.add(new StoredField("id", 1L));
+        document1.add(new NumericDocValuesField("id", 1L));
         document1.add(new TextField("title", "lucene搜索工具包", Field.Store.YES));
+        document1.add(new TextField("content", "lucene is tool", Field.Store.YES));
 
         Document document2 = new Document();
         //创建字段
-        document2.add(new LongField("id", 2l, Field.Store.YES));
+        document2.add(new LongPoint("id", 2l));
+        document2.add(new StoredField("id", 2L));
+        document2.add(new NumericDocValuesField("id", 2L));
         document2.add(new TextField("title", "solr基于lucene的搜索引擎", Field.Store.YES));
+        document2.add(new TextField("content", "solr企业级搜索引擎", Field.Store.YES));
 
         Document document3 = new Document();
         //创建字段
-        document3.add(new LongField("id", 3l, Field.Store.YES));
+        document3.add(new LongPoint("id", 3l));
+        document3.add(new StoredField("id", 3L));
+        document3.add(new NumericDocValuesField("id", 3L));
         TextField field = new TextField("title", "elasticsearch非常流行的基于lucene的搜索引擎", Field.Store.YES);
-        /*如果希望某些文档或域比其他的域更重要，如果此文档或域包含所要查询的词则应该得分较高，则可以在索引阶段设定文档或域的boost值。
-        这些值是在索引阶段就写入索引文件的，存储在标准化因子(.nrm)文件中，一旦设定，除非删除此文档，否则无法改变。
-        如果不进行设定，则Document Boost和Field Boost默认为1。*/
-        field.setBoost(10);
         document3.add(field);
+        document3.add(new TextField("content", "elasticsearch is very good", Field.Store.YES));
 
         Document document4 = new Document();
         //创建字段
-        document4.add(new LongField("id", 4l, Field.Store.YES));
+        document4.add(new LongPoint("id", 4l));
+        document4.add(new StoredField("id", 4L));
+        document4.add(new NumericDocValuesField("id", 4L));
         document4.add(new TextField("title", "elasticsearch VS solr", Field.Store.YES));
-
-        //2.创建存储目录
-        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY));
-
-        //3.创建分词器
-        //StandardAnalyzer analyzer = new StandardAnalyzer();
-        IKAnalyzer analyzer = new IKAnalyzer();
-
-        //4 创建索引写入器的配置对象
-        IndexWriterConfig config = new IndexWriterConfig(Version.LATEST, analyzer);
-
-        //5 创建索引写入器对象
-        IndexWriter indexWriter = new IndexWriter(directory, config);
+        document4.add(new TextField("content", "搜索引擎", Field.Store.YES));
 
         //6.把文档交给IndexWriter
         indexWriter.addDocument(document1);
@@ -99,7 +120,7 @@ public class LuceneTest {
     @Test
     public void testSearch() throws IOException, ParseException {
         //1 创建读取目录对象
-        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY));
+        Directory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
 
         //2 创建索引读取工具
         IndexReader reader = DirectoryReader.open(directory);
@@ -108,10 +129,11 @@ public class LuceneTest {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //4 创建查询解析器
-        QueryParser parser = new QueryParser("title", new IKAnalyzer());
+        // QueryParser parser = new QueryParser("content", new HanLPAnalyzer());
+        QueryParser parser = new MultiFieldQueryParser(new String[]{"title", "content"}, new SmartChineseAnalyzer());
 
         //5 创建查询对象
-        Query query = parser.parse("elasticsearch");
+        Query query = parser.parse("搜索引擎");
 
         //6 搜索数据
         TopDocs topDocs = searcher.search(query, 10);
@@ -125,7 +147,7 @@ public class LuceneTest {
             //文档编号
             int doc = sd.doc;
             Document document = reader.document(doc);
-            System.out.println("id" + document.get("id") + "\ttitle：" + document.get("title") + "\t得分:" + sd.score);
+            System.out.println("id:" + document.get("id") + "\ttitle：" + document.get("title") + "\tcontent: " + document.get("content") + "\t得分:" + sd.score);
         }
     }
 
@@ -136,7 +158,7 @@ public class LuceneTest {
      */
     public void search(Query query) throws Exception {
         //1 创建读取目录对象
-        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY));
+        Directory directory = FSDirectory.open(new File(INDEX_DIRECTORY).toPath());
 
         //2 创建索引读取工具
         IndexReader reader = DirectoryReader.open(directory);
@@ -156,7 +178,7 @@ public class LuceneTest {
             //文档编号
             int doc = sd.doc;
             Document document = reader.document(doc);
-            System.out.println("id" + document.get("id") + "\ttitle：" + document.get("title") + "\t得分:" + sd.score);
+            System.out.println("id:" + document.get("id") + "\ttitle：" + document.get("title") + "\tcontent: " + document.get("content") + "\t得分:" + sd.score);
         }
     }
 
@@ -204,8 +226,8 @@ public class LuceneTest {
      * @throws Exception
      */
     @Test
-    public void NumericRangeQuery() throws Exception {
-        Query query = NumericRangeQuery.newLongRange("id", 2l, 3l, true, true);
+    public void testNumericRangeQuery() throws Exception {
+        Query query = LongPoint.newRangeQuery("id", 2l, 3l);
         search(query);
     }
 
@@ -218,13 +240,59 @@ public class LuceneTest {
     @Test
     public void testBooleanQuery() throws Exception {
         //区间查询
-        Query query = NumericRangeQuery.newLongRange("id", 1l, 3l, true, true);
-        Query query2 = NumericRangeQuery.newLongRange("id", 2l, 4l, true, true);
+        Query query = LongPoint.newRangeQuery("id", 1l, 3l);
+        Query query2 = LongPoint.newRangeQuery("id", 2l, 4l);
 
-        BooleanQuery booleanQuery = new BooleanQuery();
+        BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
         booleanQuery.add(query, BooleanClause.Occur.MUST);
         booleanQuery.add(query2, BooleanClause.Occur.MUST_NOT);
-        search(booleanQuery);
+        search(booleanQuery.build());
+    }
+
+    /**
+     * 短语查询
+     */
+    @Test
+    public void testPhraseQuery() throws Exception {
+        Query query = new PhraseQuery(5, "title", new String[]{"elasticsearch", "lucene"});
+        search(query);
+    }
+
+    /**
+     * 排序,lucene默认是按评分排序的，如果设置了排序字段就不按评分排序了，如果还需要优先按评分排序
+     * 若没有对id使用NumericDocValuesField，则报错：java.lang.IllegalStateException: unexpected docvalues type NONE for field 'id' (expected=NUMERIC). Re-index with correct docvalues type.
+     **/
+    @Test
+    public void testSortQuery() throws Exception {
+        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY).toPath());
+
+        DirectoryReader reader = DirectoryReader.open(directory);
+
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        QueryParser parser = new QueryParser("title", new HanLPAnalyzer());
+        Query query = parser.parse("搜索引擎");
+        // Query query = new MatchAllDocsQuery(); // 查询所有
+        // Query query = new FuzzyQuery(new Term("content", "搜索引擎")); // text:搜索，将会搜索出没有包含"搜索"文字的数据，因为FuzzyQuery容忍2个字的误差
+        // Query query = new WildcardQuery(new Term("title", "*搜索引擎*"));
+
+        // 升序
+        // Sort sort = new Sort(new SortField(null, SortField.Type.SCORE, true), new SortField("id", SortField.Type.LONG, false));
+        // 降序
+        Sort sort = new Sort(SortField.FIELD_SCORE, new SortField("id", SortField.Type.LONG, false));
+
+        // TopDocs search = searcher.search(query, 10, sort); // 加了sort后取不到评分
+        TopDocs search = searcher.search(query, 10, sort, true, true); // 设置doDocScores为true就能得到评分
+
+        int totalHits = search.totalHits;
+        System.out.println("total:" + totalHits);
+
+        ScoreDoc[] scoreDocs = search.scoreDocs;
+        for (ScoreDoc sd : scoreDocs) {
+            int doc = sd.doc;
+            Document document = reader.document(doc);
+            System.out.println("id:" + document.get("id") + "\ttitle:" + document.get("title") + "\tcontent: " + document.get("content") + "\t得分:" + sd.score);
+        }
     }
 
     /**
@@ -240,22 +308,22 @@ public class LuceneTest {
     @Test
     public void testUpdate() throws Exception {
         //1 创建读取目录对象
-        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY));
+        Directory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
 
         //2 创建索引写入器配置对象
-        IndexWriterConfig config = new IndexWriterConfig(Version.LATEST, new IKAnalyzer());
+        IndexWriterConfig config = new IndexWriterConfig(new HanLPAnalyzer());
 
         //3 创建索引写入器
         IndexWriter writer = new IndexWriter(directory, config);
 
         //4 创建文档数据
         Document document = new Document();
-        document.add(new LongField("id", 2l, Field.Store.YES));
+        document.add(new LongPoint("id", 2l));
         document.add(new TextField("title", "solr基于lucene的搜索引擎1232525", Field.Store.YES));
 
         //5 修改
         // writer.updateDocument(new Term("id", "1"), document);
-        writer.deleteDocuments(NumericRangeQuery.newLongRange("id", 2l, 2l, true, true));
+        writer.deleteDocuments(LongPoint.newRangeQuery("id", 2l, 2l));
         writer.updateDocument(new Term("id", "2"), document);
 
         //6 提交
@@ -272,23 +340,23 @@ public class LuceneTest {
     @Test
     public void testDelete() throws Exception {
         //1 创建文档对象目录
-        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY));
+        FSDirectory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
 
         //2 创建索引写入器配置对象
-        IndexWriterConfig config = new IndexWriterConfig(Version.LATEST, new IKAnalyzer());
+        IndexWriterConfig config = new IndexWriterConfig(new HanLPAnalyzer());
 
         //3 创建索引写入器
         IndexWriter writer = new IndexWriter(directory, config);
 
         //4 删除
         //根据词条进行删除
-        // writer.deleteDocuments(new Term("id", "1"));
+        writer.deleteDocuments(new Term("id", "1"));
 
         //根据query对象删除,如果id是数值可以进行数值范围锁定一个具体的id
-        /*Query query = NumericRangeQuery.newLongRange("id", 1l, 2l, true, true);
+        /*Query query = LongPoint.newRangeQuery("id", 2l, 3l);
         writer.deleteDocuments(query);*/
         //删除所有
-        writer.deleteAll();
+        // writer.deleteAll();
 
         //5 提交
         writer.commit();
@@ -303,7 +371,7 @@ public class LuceneTest {
     @Test
     public void testHighlighter() throws Exception {
         //1 创建目录对象
-        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY));
+        FSDirectory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
 
         //2 创建目录读取器
         DirectoryReader reader = DirectoryReader.open(directory);
@@ -312,7 +380,7 @@ public class LuceneTest {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //4 创建查询解析器
-        QueryParser parser = new QueryParser("title", new IKAnalyzer());
+        QueryParser parser = new QueryParser("title", new HanLPAnalyzer());
 
         //5 创建查询对象
         Query query = parser.parse("搜索");
@@ -338,39 +406,9 @@ public class LuceneTest {
             System.out.println("id:" + document.get("id"));
             //11 用高亮工具处理普通的查询结果
             String title = document.get("title");
-            String hTitle = highlighter.getBestFragment(new IKAnalyzer(), "title", title);
+            String hTitle = highlighter.getBestFragment(new HanLPAnalyzer(), "title", title);
             System.out.println("title：" + hTitle);
             System.out.println("得分：" + sd.score);
-        }
-    }
-
-    /**
-     * 排序
-     **/
-    @Test
-    public void testSortQuery() throws Exception {
-        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY));
-
-        DirectoryReader reader = DirectoryReader.open(directory);
-
-        IndexSearcher searcher = new IndexSearcher(reader);
-
-        QueryParser parser = new QueryParser("title", new IKAnalyzer());
-
-        Query query = parser.parse("搜索");
-
-        Sort sort = new Sort(new SortField("id", SortField.Type.LONG, false));
-
-        TopFieldDocs search = searcher.search(query, 10, sort);
-
-        int totalHits = search.totalHits;
-        System.out.println("total:" + totalHits);
-
-        ScoreDoc[] scoreDocs = search.scoreDocs;
-        for (ScoreDoc sd : scoreDocs) {
-            int doc = sd.doc;
-            Document document = reader.document(doc);
-            System.out.println("id:" + document.get("id") + "\ttitle:" + document.get("title"));
         }
     }
 
@@ -379,16 +417,16 @@ public class LuceneTest {
      **/
     @Test
     public void testPage() throws IOException, ParseException {
-        int pageSize = 2;
-        int pageNum = 2;
+        int pageSize = 1;
+        int pageNum = 1;
         int start = (pageNum - 1) * pageSize;
         int end = start + pageSize;
 
-        FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY));
+        Directory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
         DirectoryReader reader = DirectoryReader.open(directory);
         IndexSearcher searcher = new IndexSearcher(reader);
 
-        QueryParser parser = new QueryParser("title", new IKAnalyzer());
+        QueryParser parser = new QueryParser("title", new HanLPAnalyzer());
         Query query = parser.parse("搜索");
         Sort sort = new Sort(new SortField("id", SortField.Type.LONG, false));
         TopFieldDocs topDocs = searcher.search(query, end, sort);
