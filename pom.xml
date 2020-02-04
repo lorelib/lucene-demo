@@ -12,7 +12,7 @@
     <properties>
         <project.encoding>UTF-8</project.encoding>
         <project.jdk.version>1.8</project.jdk.version>
-        <lucene.version>6.6.6</lucene.version>
+        <lucene.version>7.7.2</lucene.version>
     </properties>
 
     <dependencies>
@@ -50,7 +50,7 @@
         <dependency>
             <groupId>com.hankcs.nlp</groupId>
             <artifactId>hanlp-lucene-plugin</artifactId>
-            <version>1.1.6-lucene6</version>
+            <version>1.1.6</version>
         </dependency>
 
         <dependency>

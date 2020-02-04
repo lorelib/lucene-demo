@@ -1,6 +1,5 @@
 package org.lorelib.lucene;
 
-import com.hankcs.lucene.HanLPAnalyzer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.cn.smart.SmartChineseAnalyzer;
 import org.apache.lucene.document.*;
@@ -51,12 +50,11 @@ public class LuceneTest {
     @Test
     public void testCreate() throws IOException {
         //1.创建存储目录
-        // FSDirectory directory = FSDirectory.open(new File(INDEX_DIRECTORY).toPath());
         Directory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
 
         //2.创建分词器
         //StandardAnalyzer analyzer = new StandardAnalyzer();
-        Analyzer analyzer = new HanLPAnalyzer();
+        Analyzer analyzer = new SmartChineseAnalyzer();
 
         //3 创建索引写入器的配置对象
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
@@ -129,7 +127,7 @@ public class LuceneTest {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //4 创建查询解析器
-        // QueryParser parser = new QueryParser("content", new HanLPAnalyzer());
+        // QueryParser parser = new QueryParser("content", new SmartChineseAnalyzer());
         QueryParser parser = new MultiFieldQueryParser(new String[]{"title", "content"}, new SmartChineseAnalyzer());
 
         //5 创建查询对象
@@ -139,7 +137,7 @@ public class LuceneTest {
         TopDocs topDocs = searcher.search(query, 10);
 
         //7 各种操作
-        int totalHits = topDocs.totalHits;
+        long totalHits = topDocs.totalHits;
         ScoreDoc[] scoreDocs = topDocs.scoreDocs;
         System.out.println("总共找到条数：" + totalHits);
 
@@ -158,7 +156,7 @@ public class LuceneTest {
      */
     public void search(Query query) throws Exception {
         //1 创建读取目录对象
-        Directory directory = FSDirectory.open(new File(INDEX_DIRECTORY).toPath());
+        Directory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
 
         //2 创建索引读取工具
         IndexReader reader = DirectoryReader.open(directory);
@@ -170,7 +168,7 @@ public class LuceneTest {
         TopDocs topDocs = searcher.search(query, 10);
 
         //7 各种操作
-        int totalHits = topDocs.totalHits;
+        long totalHits = topDocs.totalHits;
         ScoreDoc[] scoreDocs = topDocs.scoreDocs;
         System.out.println("总共找到条数：" + totalHits);
 
@@ -270,7 +268,7 @@ public class LuceneTest {
 
         IndexSearcher searcher = new IndexSearcher(reader);
 
-        QueryParser parser = new QueryParser("title", new HanLPAnalyzer());
+        QueryParser parser = new QueryParser("title", new SmartChineseAnalyzer());
         Query query = parser.parse("搜索引擎");
         // Query query = new MatchAllDocsQuery(); // 查询所有
         // Query query = new FuzzyQuery(new Term("content", "搜索引擎")); // text:搜索，将会搜索出没有包含"搜索"文字的数据，因为FuzzyQuery容忍2个字的误差
@@ -284,7 +282,7 @@ public class LuceneTest {
         // TopDocs search = searcher.search(query, 10, sort); // 加了sort后取不到评分
         TopDocs search = searcher.search(query, 10, sort, true, true); // 设置doDocScores为true就能得到评分
 
-        int totalHits = search.totalHits;
+        long totalHits = search.totalHits;
         System.out.println("total:" + totalHits);
 
         ScoreDoc[] scoreDocs = search.scoreDocs;
@@ -311,7 +309,7 @@ public class LuceneTest {
         Directory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
 
         //2 创建索引写入器配置对象
-        IndexWriterConfig config = new IndexWriterConfig(new HanLPAnalyzer());
+        IndexWriterConfig config = new IndexWriterConfig(new SmartChineseAnalyzer());
 
         //3 创建索引写入器
         IndexWriter writer = new IndexWriter(directory, config);
@@ -319,7 +317,10 @@ public class LuceneTest {
         //4 创建文档数据
         Document document = new Document();
         document.add(new LongPoint("id", 2l));
-        document.add(new TextField("title", "solr基于lucene的搜索引擎1232525", Field.Store.YES));
+        document.add(new StoredField("id", 2L));
+        document.add(new NumericDocValuesField("id", 2L));
+        document.add(new TextField("title", "solr基于lucene的搜索引擎dagasdga", Field.Store.YES));
+        document.add(new TextField("content", "solr企业级搜索引擎asgasdga", Field.Store.YES));
 
         //5 修改
         // writer.updateDocument(new Term("id", "1"), document);
@@ -343,7 +344,7 @@ public class LuceneTest {
         FSDirectory directory = FSDirectory.open(Paths.get(INDEX_DIRECTORY));
 
         //2 创建索引写入器配置对象
-        IndexWriterConfig config = new IndexWriterConfig(new HanLPAnalyzer());
+        IndexWriterConfig config = new IndexWriterConfig(new SmartChineseAnalyzer());
 
         //3 创建索引写入器
         IndexWriter writer = new IndexWriter(directory, config);
@@ -380,7 +381,7 @@ public class LuceneTest {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         //4 创建查询解析器
-        QueryParser parser = new QueryParser("title", new HanLPAnalyzer());
+        QueryParser parser = new QueryParser("title", new SmartChineseAnalyzer());
 
         //5 创建查询对象
         Query query = parser.parse("搜索");
@@ -406,7 +407,7 @@ public class LuceneTest {
             System.out.println("id:" + document.get("id"));
             //11 用高亮工具处理普通的查询结果
             String title = document.get("title");
-            String hTitle = highlighter.getBestFragment(new HanLPAnalyzer(), "title", title);
+            String hTitle = highlighter.getBestFragment(new SmartChineseAnalyzer(), "title", title);
             System.out.println("title：" + hTitle);
             System.out.println("得分：" + sd.score);
         }
@@ -426,7 +427,7 @@ public class LuceneTest {
         DirectoryReader reader = DirectoryReader.open(directory);
         IndexSearcher searcher = new IndexSearcher(reader);
 
-        QueryParser parser = new QueryParser("title", new HanLPAnalyzer());
+        QueryParser parser = new QueryParser("title", new SmartChineseAnalyzer());
         Query query = parser.parse("搜索");
         Sort sort = new Sort(new SortField("id", SortField.Type.LONG, false));
         TopFieldDocs topDocs = searcher.search(query, end, sort);
@@ -438,7 +439,7 @@ public class LuceneTest {
             int doc = scoreDoc.doc;
             Document document = reader.document(doc);
 
-            System.out.println("id\t" + document.get("id") + "title\t" + document.get("title"));
+            System.out.println("id\t" + document.get("id") + " title\t" + document.get("title"));
         }
     }
 }
